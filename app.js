@@ -1,3 +1,5 @@
+require('dotenv').config()
+
 var express = require('express');
 var path = require('path');
 var favicon = require('serve-favicon');
@@ -60,11 +62,20 @@ var analytics = require('./routes/analytics');
 var publicAnalytics = require('./routes/public-analytics');
 var pendinginvitation = require('./routes/pending-invitation');
 var subscription = require('./routes/subscription');
-var chat21Request = require('./routes/chat21-request');
+
+
+var chat21Enabled = process.env.CHAT21_ENABLED;
+
+var chat21Request;
+// if (chat21Enabled && chat21Enabled===true){ 
+   chat21Request = require('./routes/chat21-request');
+// }
+
 var firebase = require('./routes/firebase');
 var jwtroute = require('./routes/jwt');
 var key = require('./routes/key');
 var activities = require('./routes/activity');
+var widgets = require('./routes/widget');
 
 var appRules = require('./rules/appRules');
 appRules.start();
@@ -90,6 +101,7 @@ activityArchiver.listen();
 
 
 var ReqLog = require("./models/reqlog");
+var VisitorCounter = require("./models/visitorCounter");
 
 if (process.env.QUEQUE_ENABLED) {
   var queue = require('./queue/reconnect');
@@ -248,6 +260,29 @@ var reqLogger = function (req, res, next) {
   next()
 }
 
+
+var visitorCounter = function (req, res, next) {
+  try {
+    var projectid = req.projectid;
+    winston.debug("visitorCounter projectIdSetter projectid:" + projectid);
+
+  var fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
+  winston.debug("fullUrl:"+ fullUrl);
+  winston.debug("req.get('origin'):" + req.get('origin'));
+
+  VisitorCounter.findOneAndUpdate({ origin: req.get('origin'),id_project:  projectid}, 
+  { path: req.originalUrl,origin: req.get('origin'),  id_project:  projectid, $inc: { totalViews: 1 } }, {new: true, upsert:true },function(err, VisitorCounterSaved) {
+    if (err) {
+      winston.error('Error saving reqlog ', err)
+    }
+    winston.debug("visitorCounter saved "+ VisitorCounterSaved);
+  });
+
+  next()
+  }
+  catch(e){}
+}
+
 app.get('/', function (req, res) {  
   res.send('Hello from Tiledesk server. It\'s UP. See the documentation here http://docs.tiledesk.com.');
 });
@@ -362,13 +397,15 @@ app.use('/users', [passport.authenticate(['basic', 'jwt'], { session: false }), 
 app.use('/:projectid/leads', [passport.authenticate(['basic', 'jwt'], { session: false }), validtoken, roleChecker.hasRole()], lead);
 app.use('/:projectid/requests/:request_id/messages', [passport.authenticate(['basic', 'jwt'], { session: false }), validtoken, roleChecker.hasRole()], message);
 
-app.use('/:projectid/departments', department);
+app.use('/:projectid/departments', visitorCounter, department);
+// app.use('/:projectid/departments', department);
 // app.use('/:projectid/departments', reqLogger, department);
 
 app.use('/public/requests', publicRequest);
 
-app.use('/chat21/requests',  chat21Request);
-
+if (chat21Request) {
+  app.use('/chat21/requests',  chat21Request);
+}
 
 
 app.use('/:projectid/faq', [passport.authenticate(['basic', 'jwt'], { session: false }), validtoken, roleChecker.hasRole()], faq);
@@ -382,6 +419,8 @@ app.use('/:projectid/faq_kb', [passport.authenticate(['basic', 'jwt'], { session
 //ATTENZIOne aggiungi auth check qui.i controlli stanno i project
 app.use('/projects',project);
 //app.use('/settings',setting);
+
+app.use('/:projectid/widgets', widgets);
 
 
 // non mettere ad admin perchà la dashboard  richiama il servizio router.get('/:user_id/:project_id') spesso

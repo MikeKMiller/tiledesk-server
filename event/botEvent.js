@@ -68,6 +68,11 @@ messageEvent.on('message.received', function(message) {
 
     winston.debug("message", message);
 
+    if (message.sender === "system") {
+        winston.debug("it s a message sent from system, exit");
+        return null;
+    }
+
    var botId = getBotId(message);
 
    winston.debug("botId: " + botId);
@@ -75,7 +80,13 @@ messageEvent.on('message.received', function(message) {
    if (!botId) {
         return null;
     }else {
-        messageEvent.emit('message.received.for.bot', message);
+        if (message.sender === 'bot_'+botId) {
+            winston.debug("it s a message sent from bot, exit");
+            return null;        
+        }else {
+            messageEvent.emit('message.received.for.bot', message);
+        }
+        
     }
 
 

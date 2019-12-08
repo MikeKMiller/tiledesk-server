@@ -1,7 +1,7 @@
 {
   "name": "@tiledesk/tiledesk-server",
   "description": "The Tiledesk server module",
-  "version": "1.0.5",
+  "version": "1.0.9",
   "scripts": {
     "start": "node ./bin/www",
     "pretest": "mongodb-runner start",
@@ -17,7 +17,7 @@
     "url": "https://github.com/Tiledesk/tiledesk-server"
   },
   "engines": {
-    "node": ">=10.0.0",
+    "node": "11.14.0",
     "npm": ">=6.0.0"
   },
   "bin": {
@@ -34,6 +34,7 @@
     "cors": "^2.8.4",
     "csv-express": "^1.2.2",
     "debug": "~2.6.0",
+    "dotenv": "^8.0.0",
     "email-templates": "^3.6.0",
     "express": "~4.14.1",
     "express-redis-cache": "^1.1.3",
